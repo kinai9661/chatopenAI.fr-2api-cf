@@ -15,7 +15,8 @@ const CONFIG = {
     "dall-e-2": { imgModel: "dall-e-2", type: "image" },
     "dall-e-3": { imgModel: "dall-e-3", type: "image" },
     "dall-e-3-hd": { imgModel: "dall-e-3-hd", type: "image" },
-    "gpt-image-1": { imgModel: "dall-e-3", type: "image" }
+    "gpt-image-1": { imgModel: "dall-e-3", type: "image" },
+    "gpt-image-1.5": { imgModel: "dall-e-3", type: "image" }
   },
   DEFAULT_MODEL: "gpt-5.1"
 };
@@ -582,6 +583,8 @@ function handleWebUI() {
           <option value="dall-e-3">DALL-E 3</option>
           <option value="dall-e-3-hd">DALL-E 3 HD</option>
           <option value="dall-e-2">DALL-E 2</option>
+          <option value="gpt-image-1">GPT-Image-1</option>
+          <option value="gpt-image-1.5" selected>GPT-Image-1.5</option>
         </select>
         <div class="label">Prompt</div>
         <textarea id="img-prompt" rows="3">A cute orange cat sitting on a windowsill, digital art</textarea>
