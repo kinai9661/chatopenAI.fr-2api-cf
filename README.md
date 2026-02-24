@@ -24,9 +24,15 @@ OpenAI-compatible API proxy for chatopenai.fr - provides free access to GPT-5.1 
 - `gpt-5.1` / `gpt-5` - Full capability model
 
 ### Images
-- `dall-e-2` - DALL-E 2
-- `dall-e-3` - DALL-E 3
+- `dall-e-2` - DALL-E 2 (256x256, 512x512, 1024x1024)
+- `dall-e-3` - DALL-E 3 (1024x1024, 1792x1024, 1024x1792)
 - `dall-e-3-hd` - DALL-E 3 HD quality
+- `gpt-image-1` - GPT Image 1 (based on DALL-E 3)
+- `gpt-image-1.5` - GPT Image 1.5 with enhanced features:
+  - Larger sizes: 2048x2048, 2048x1536, 1536x2048
+  - Default HD quality
+  - Default vivid style
+  - Enhanced detail mode
 
 ## Usage
 
@@ -63,7 +69,7 @@ curl http://localhost:8787/v1/images/generations \
 |-----------|------|---------|-------------|
 | `model` | string | `dall-e-3` | Model ID: `dall-e-2`, `dall-e-3`, `dall-e-3-hd`, `gpt-image-1`, `gpt-image-1.5` |
 | `prompt` | string | required | Image description |
-| `size` | string | `1024x1024` | Image size: `1024x1024`, `1792x1024`, `1024x1792` |
+| `size` | string | `1024x1024` | Image size. DALL-E 3: `1024x1024`, `1792x1024`, `1024x1792`. DALL-E 2: `256x256`, `512x512`, `1024x1024` |
 | `quality` | string | `standard` | Image quality: `standard`, `hd` |
 | `style` | string | `natural` | Image style: `natural`, `vivid` |
 | `n` | integer | `1` | Number of images (1-4) |
@@ -209,9 +215,15 @@ ChatOpenAI.fr API 代理 - OpenAI 相容的 API 代理服務，提供免費存�
 - `gpt-5.1` / `gpt-5` - 完整功能模型
 
 ### 圖片模型
-- `dall-e-2` - DALL-E 2
-- `dall-e-3` - DALL-E 3
+- `dall-e-2` - DALL-E 2 (256x256, 512x512, 1024x1024)
+- `dall-e-3` - DALL-E 3 (1024x1024, 1792x1024, 1024x1792)
 - `dall-e-3-hd` - DALL-E 3 高畫質
+- `gpt-image-1` - GPT Image 1 (基於 DALL-E 3)
+- `gpt-image-1.5` - GPT Image 1.5 增強版功能：
+  - 更大尺寸：2048x2048, 2048x1536, 1536x2048
+  - 預設 HD 高畫質
+  - 預設 vivid 生動風格
+  - 增強細節模式
 
 ## 使用方式
 
@@ -249,7 +261,7 @@ curl http://localhost:8787/v1/images/generations \
 |------|------|--------|------|
 | `model` | string | `dall-e-3` | 模型 ID：`dall-e-2`, `dall-e-3`, `dall-e-3-hd`, `gpt-image-1`, `gpt-image-1.5` |
 | `prompt` | string | 必填 | 圖片描述提示詞 |
-| `size` | string | `1024x1024` | 圖片尺寸：`1024x1024`, `1792x1024`, `1024x1792` |
+| `size` | string | `1024x1024` | 圖片尺寸。DALL-E 3: `1024x1024`, `1792x1024`, `1024x1792`。DALL-E 2: `256x256`, `512x512`, `1024x1024` |
 | `quality` | string | `standard` | 圖片品質：`standard`, `hd` |
 | `style` | string | `natural` | 圖片風格：`natural` (自然), `vivid` (生動) |
 | `n` | integer | `1` | 生成圖片數量 (1-4) |

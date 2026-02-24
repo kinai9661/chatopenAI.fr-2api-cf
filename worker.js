@@ -16,7 +16,18 @@ const CONFIG = {
     "dall-e-3": { imgModel: "dall-e-3", type: "image" },
     "dall-e-3-hd": { imgModel: "dall-e-3-hd", type: "image" },
     "gpt-image-1": { imgModel: "dall-e-3", type: "image" },
-    "gpt-image-1.5": { imgModel: "dall-e-3", type: "image" }
+    "gpt-image-1.5": {
+      imgModel: "dall-e-3-hd",
+      type: "image",
+      // 特殊功能配置 / Special features
+      supports: {
+        sizes: ["1024x1024", "1792x1024", "1024x1792", "2048x2048", "2048x1536", "1536x2048"],
+        maxImages: 4,
+        defaultQuality: "hd",
+        defaultStyle: "vivid",
+        enhancedDetail: true  // 增強細節模式
+      }
+    }
   },
   DEFAULT_MODEL: "gpt-5.1"
 };
@@ -463,14 +474,37 @@ async function handleImageGeneration(request) {
       });
     }
 
+    // 檢查模型是否有特殊配置 (gpt-image-1.5)
+    // Check if model has special configuration
+    const hasSpecialConfig = modelConfig.supports !== undefined;
+    
+    // 應用模型預設值 / Apply model defaults
+    if (hasSpecialConfig) {
+      // 使用模型預設的 quality 和 style
+      if (modelConfig.supports.defaultQuality && quality === "standard") {
+        quality = modelConfig.supports.defaultQuality;
+      }
+      if (modelConfig.supports.defaultStyle && style === "natural") {
+        style = modelConfig.supports.defaultStyle;
+      }
+    }
+
     const nonce = await getImageNonce();
 
     // Map size to supported sizes
+    // DALL-E 3 supports: 1024x1024, 1792x1024 (landscape), 1024x1792 (portrait)
+    // DALL-E 2 supports: 256x256, 512x512, 1024x1024
+    // gpt-image-1.5 supports larger sizes: 2048x2048, 2048x1536, 1536x2048
     let imgSize = "1024x1024";
-    if (size.includes("1792") || size.includes("1536")) {
-      imgSize = "1792x1024";
-    } else if (size.includes("1024x1792") || size.includes("1024x1536")) {
-      imgSize = "1024x1792";
+    if (size === "1024x1792" || size === "1024x1536") {
+      imgSize = "1024x1792";  // Portrait
+    } else if (size === "1792x1024" || size === "1536x1024") {
+      imgSize = "1792x1024";  // Landscape
+    } else if (size === "256x256" || size === "512x512") {
+      imgSize = size;  // DALL-E 2 small sizes
+    } else if (hasSpecialConfig && modelConfig.supports.sizes.includes(size)) {
+      // gpt-image-1.5 支援更大的尺寸
+      imgSize = size;
     }
 
     // Map style to img_type (vivid -> vivid, natural -> natural)
@@ -695,9 +729,14 @@ function handleWebUI() {
         </select>
         <div class="label">Size</div>
         <select id="img-size">
-          <option value="1024x1024" selected>1024x1024 (Square)</option>
-          <option value="1792x1024">1792x1024 (Landscape)</option>
-          <option value="1024x1792">1024x1792 (Portrait)</option>
+          <option value="1024x1024" selected>1024x1024 (Square - All Models)</option>
+          <option value="1792x1024">1792x1024 (Landscape - DALL-E 3)</option>
+          <option value="1024x1792">1024x1792 (Portrait - DALL-E 3)</option>
+          <option value="2048x2048">2048x2048 (Large Square - GPT-Image-1.5)</option>
+          <option value="2048x1536">2048x1536 (Large Landscape - GPT-Image-1.5)</option>
+          <option value="1536x2048">1536x2048 (Large Portrait - GPT-Image-1.5)</option>
+          <option value="512x512">512x512 (DALL-E 2 only)</option>
+          <option value="256x256">256x256 (DALL-E 2 only)</option>
         </select>
         <div class="label">Style</div>
         <select id="img-style">
@@ -721,9 +760,16 @@ function handleWebUI() {
           <option value="transparent">Transparent</option>
           <option value="opaque">Opaque</option>
         </select>
+        <div class="label">Number of Images</div>
+        <select id="img-n">
+          <option value="1" selected>1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+        </select>
         <div class="label">Prompt</div>
         <textarea id="img-prompt" rows="3">A cute orange cat sitting on a windowsill, digital art</textarea>
-        <button onclick="generateImage()">Generate Image</button>
+        <button onclick="generateImage()">Generate Image(s)</button>
       </div>
     </div>
     
@@ -796,8 +842,9 @@ function handleWebUI() {
       const quality = document.getElementById('img-quality').value;
       const outputFormat = document.getElementById('img-output-format').value;
       const background = document.getElementById('img-background').value;
+      const n = parseInt(document.getElementById('img-n').value) || 1;
       
-      output.textContent = 'Generating image with ' + model + ' (' + style + ', ' + quality + ')...';
+      output.textContent = 'Generating ' + n + ' image(s) with ' + model + ' (' + style + ', ' + quality + ')...';
       container.innerHTML = '';
       
       try {
@@ -808,7 +855,7 @@ function handleWebUI() {
             model,
             prompt,
             size,
-            n: 1,
+            n,
             style,
             quality,
             output_format: outputFormat,
@@ -823,18 +870,28 @@ function handleWebUI() {
           return;
         }
         
-        output.textContent = 'Image generated successfully!';
         console.log('Image result:', result);
         if (result.data && result.data.length > 0) {
-          const img = result.data[0];
-          if (img.url) {
-            container.innerHTML = '<img class="img-result" src="' + img.url + '" alt="Generated image">';
-          } else if (img.b64_json) {
-            container.innerHTML = '<img class="img-result" src="data:image/jpeg;base64,' + img.b64_json + '" alt="Generated image">';
-          } else {
-            output.textContent = 'Image generated but no displayable data found';
-            console.log('Image data:', img);
-          }
+          output.textContent = result.data.length + ' image(s) generated successfully!';
+          
+          // Display all generated images
+          let imagesHtml = '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; margin-top: 15px;">';
+          
+          result.data.forEach((img, index) => {
+            let imgHtml = '';
+            if (img.url) {
+              imgHtml = '<img class="img-result" src="' + img.url + '" alt="Generated image ' + (index + 1) + '" style="width: 100%; border-radius: 8px;">';
+            } else if (img.b64_json) {
+              imgHtml = '<img class="img-result" src="data:image/jpeg;base64,' + img.b64_json + '" alt="Generated image ' + (index + 1) + '" style="width: 100%; border-radius: 8px;">';
+            }
+            
+            if (imgHtml) {
+              imagesHtml += '<div style="position: relative;"><div style="position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 5px 10px; border-radius: 4px; font-size: 12px;">#' + (index + 1) + '</div>' + imgHtml + '</div>';
+            }
+          });
+          
+          imagesHtml += '</div>';
+          container.innerHTML = imagesHtml;
         } else {
           output.textContent = 'No image data in response';
         }
