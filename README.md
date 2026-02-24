@@ -34,6 +34,16 @@ OpenAI-compatible API proxy for chatopenai.fr - provides free access to GPT-5.1 
   - Default vivid style
   - Enhanced detail mode
 
+## Web UI Features
+
+The built-in Web UI provides a user-friendly interface with:
+
+- **Bilingual Interface**: Toggle between 繁體中文 and English
+- **Settings Panel**: Save API Key and default model preferences
+- **Real-time Chat**: Streaming responses with GPT-5.1
+- **Image Generation**: Support for multiple images, various sizes and styles
+- **Local Storage**: Settings are saved locally for convenience
+
 ## Usage
 
 ### Chat Example
@@ -224,6 +234,16 @@ ChatOpenAI.fr API 代理 - OpenAI 相容的 API 代理服務，提供免費存�
   - 預設 HD 高畫質
   - 預設 vivid 生動風格
   - 增強細節模式
+
+## Web UI 功能特色
+
+內建的 Web UI 提供友善的使用者介面：
+
+- **雙語介面**：支援繁體中文和英文切換
+- **設置面板**：儲存 API Key 和預設模型偏好
+- **即時聊天**：GPT-5.1 串流回應
+- **圖片生成**：支援多張圖片、多種尺寸和風格
+- **本地儲存**：設定自動儲存在瀏覽器中
 
 ## 使用方式
 
