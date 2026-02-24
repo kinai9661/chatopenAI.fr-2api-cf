@@ -4,3 +4,13 @@ compatibility_date = "2024-01-01"
 
 [vars]
 ENVIRONMENT = "production"
+
+# API_KEY 設定 / API_KEY Configuration
+# 請使用 wrangler secret put API_KEY 來設定 API Key（推薦）
+# Please use wrangler secret put API_KEY to set the API Key (recommended)
+#
+# 或者在 Cloudflare Dashboard > Workers > Settings > Variables 中設定
+# Or set it in Cloudflare Dashboard > Workers > Settings > Variables
+#
+# 如果不設定 API_KEY，API 將不需要驗證（向後兼容）
+# If API_KEY is not set, the API will not require authentication (backward compatible)

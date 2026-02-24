@@ -46,6 +46,70 @@ function corsHeaders() {
   };
 }
 
+/**
+ * 驗證 API Key / Validate API Key
+ * 如果未設定 API_KEY 環境變數，則跳過驗證（向後兼容）
+ * If API_KEY environment variable is not set, skip validation (backward compatible)
+ */
+function validateApiKey(request, env) {
+    // 如果沒有設定 API_KEY，跳過驗證（向後兼容）
+    // If API_KEY is not set, skip validation (backward compatible)
+    if (!env.API_KEY) {
+        return null;
+    }
+    
+    const authHeader = request.headers.get('Authorization');
+    
+    // 檢查 Authorization header 是否存在
+    // Check if Authorization header exists
+    if (!authHeader) {
+        return new Response(JSON.stringify({
+            error: "缺少授權標頭 / Missing Authorization header"
+        }), {
+            status: 401,
+            headers: {
+                'Content-Type': 'application/json',
+                ...corsHeaders()
+            }
+        });
+    }
+    
+    // 驗證 Bearer token 格式
+    // Validate Bearer token format
+    const match = authHeader.match(/^Bearer\s+(.+)$/i);
+    if (!match) {
+        return new Response(JSON.stringify({
+            error: "無效的授權格式，請使用 Bearer token / Invalid authorization format, please use Bearer token"
+        }), {
+            status: 401,
+            headers: {
+                'Content-Type': 'application/json',
+                ...corsHeaders()
+            }
+        });
+    }
+    
+    const token = match[1];
+    
+    // 驗證 token 是否正確
+    // Validate if token is correct
+    if (token !== env.API_KEY) {
+        return new Response(JSON.stringify({
+            error: "無效的 API Key / Invalid API Key"
+        }), {
+            status: 401,
+            headers: {
+                'Content-Type': 'application/json',
+                ...corsHeaders()
+            }
+        });
+    }
+    
+    // 驗證通過
+    // Validation passed
+    return null;
+}
+
 // Fetch nonces from the page
 async function fetchNonces() {
   const now = Date.now();
@@ -143,19 +207,26 @@ export default {
     }
 
     if (url.pathname === "/" || url.pathname === "/index.html") {
-      return handleWebUI();
+        return handleWebUI();
+    }
+
+    // 驗證 API Key（僅對 API 端點）
+    // Validate API Key (only for API endpoints)
+    const authError = validateApiKey(request, env);
+    if (authError) {
+        return authError;
     }
 
     if (url.pathname === "/v1/models") {
-      return handleModels();
+        return handleModels();
     }
 
     if (url.pathname === "/v1/chat/completions") {
-      return handleChat(request);
+        return handleChat(request);
     }
 
     if (url.pathname === "/v1/images/generations") {
-      return handleImageGeneration(request);
+        return handleImageGeneration(request);
     }
 
     return new Response(JSON.stringify({ error: "Not Found" }), {
@@ -365,6 +436,24 @@ async function handleImageGeneration(request) {
     const size = body.size || "1024x1024";
     const quality = body.quality || "standard";
     const n = body.n || 1;
+    
+    // OpenAI 標準參數 / OpenAI Standard Parameters
+    const style = body.style || "natural";  // "vivid" | "natural"
+    const responseFormat = body.response_format || "url";  // "url" | "b64_json"
+    
+    // 擴展參數 / Extended Parameters
+    const outputFormat = body.output_format || "jpeg";  // "jpeg" | "png" | "webp"
+    const background = body.background || "auto";  // "auto" | "transparent" | "opaque"
+    const artStyle = body.art_style || "None";
+    const artist = body.artist || "None";
+    const photographyStyle = body.photography_style || "None";
+    const lighting = body.lighting || "None";
+    const subject = body.subject || "None";
+    const cameraSettings = body.camera_settings || "None";
+    const composition = body.composition || "None";
+    const resolution = body.resolution || "None";
+    const color = body.color || "None";
+    const specialEffects = body.special_effects || "None";
 
     const modelConfig = CONFIG.MODELS[model] || CONFIG.MODELS["dall-e-3"];
     if (modelConfig.type !== "image") {
@@ -384,28 +473,31 @@ async function handleImageGeneration(request) {
       imgSize = "1024x1792";
     }
 
+    // Map style to img_type (vivid -> vivid, natural -> natural)
+    const imgType = style === "vivid" ? "vivid" : "natural";
+
     const formBody = new URLSearchParams({
       "_wpnonce": nonce,
       "action": "wpaicg_image_generator",
       "prompt": prompt,
       "img_model": modelConfig.imgModel,
       "img_size": imgSize,
-      "img_type": "natural",
+      "img_type": imgType,
       "num_images": Math.min(n, 4).toString(),
       "size": "auto",
       "quality": quality === "hd" ? "high" : "low",
-      "output_format": "jpeg",
-      "background": "auto",
-      "artist": "None",
-      "art_style": "None",
-      "photography_style": "None",
-      "lighting": "None",
-      "subject": "None",
-      "camera_settings": "None",
-      "composition": "None",
-      "resolution": "None",
-      "color": "None",
-      "special_effects": "None"
+      "output_format": outputFormat,
+      "background": background,
+      "artist": artist,
+      "art_style": artStyle,
+      "photography_style": photographyStyle,
+      "lighting": lighting,
+      "subject": subject,
+      "camera_settings": cameraSettings,
+      "composition": composition,
+      "resolution": resolution,
+      "color": color,
+      "special_effects": specialEffects
     });
 
     console.log("Image request - nonce:", nonce, "model:", modelConfig.imgModel, "prompt:", prompt.substring(0, 50));
@@ -474,20 +566,35 @@ async function handleImageGeneration(request) {
     let data = [];
     const imgs = result.imgs || result.images || [];
     
-    console.log("Processing imgs:", imgs.length, "items");
+    console.log("Processing imgs:", imgs.length, "items", "format:", responseFormat);
     
     if (Array.isArray(imgs) && imgs.length > 0) {
       data = imgs.map(img => {
         // img is a data URI like "data:image/jpeg;base64,..."
         if (typeof img === 'string') {
           if (img.startsWith('data:image')) {
-            // It's a complete data URI - return as URL (browsers can display data URIs)
-            return {
-              url: img,
-              revised_prompt: prompt
-            };
+            // Extract base64 data from data URI
+            const base64Data = img.split(',')[1];
+            
+            if (responseFormat === "b64_json") {
+              // Return base64 encoded data
+              return {
+                b64_json: base64Data,
+                revised_prompt: prompt
+              };
+            } else {
+              // Return as URL (data URI)
+              return {
+                url: img,
+                revised_prompt: prompt
+              };
+            }
           }
           // It's a regular URL
+          if (responseFormat === "b64_json") {
+            // Cannot convert URL to base64, return as is with warning
+            return { url: img, revised_prompt: prompt };
+          }
           return { url: img, revised_prompt: prompt };
         }
         // If it's an object
@@ -586,6 +693,34 @@ function handleWebUI() {
           <option value="gpt-image-1">GPT-Image-1</option>
           <option value="gpt-image-1.5" selected>GPT-Image-1.5</option>
         </select>
+        <div class="label">Size</div>
+        <select id="img-size">
+          <option value="1024x1024" selected>1024x1024 (Square)</option>
+          <option value="1792x1024">1792x1024 (Landscape)</option>
+          <option value="1024x1792">1024x1792 (Portrait)</option>
+        </select>
+        <div class="label">Style</div>
+        <select id="img-style">
+          <option value="natural" selected>Natural</option>
+          <option value="vivid">Vivid</option>
+        </select>
+        <div class="label">Quality</div>
+        <select id="img-quality">
+          <option value="standard" selected>Standard</option>
+          <option value="hd">HD</option>
+        </select>
+        <div class="label">Output Format</div>
+        <select id="img-output-format">
+          <option value="jpeg" selected>JPEG</option>
+          <option value="png">PNG</option>
+          <option value="webp">WebP</option>
+        </select>
+        <div class="label">Background</div>
+        <select id="img-background">
+          <option value="auto" selected>Auto</option>
+          <option value="transparent">Transparent</option>
+          <option value="opaque">Opaque</option>
+        </select>
         <div class="label">Prompt</div>
         <textarea id="img-prompt" rows="3">A cute orange cat sitting on a windowsill, digital art</textarea>
         <button onclick="generateImage()">Generate Image</button>
@@ -656,15 +791,29 @@ function handleWebUI() {
       const container = document.getElementById('img-container');
       const prompt = document.getElementById('img-prompt').value;
       const model = document.getElementById('img-model').value;
+      const size = document.getElementById('img-size').value;
+      const style = document.getElementById('img-style').value;
+      const quality = document.getElementById('img-quality').value;
+      const outputFormat = document.getElementById('img-output-format').value;
+      const background = document.getElementById('img-background').value;
       
-      output.textContent = 'Generating image with ' + model + '...';
+      output.textContent = 'Generating image with ' + model + ' (' + style + ', ' + quality + ')...';
       container.innerHTML = '';
       
       try {
         const response = await fetch('/v1/images/generations', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ model, prompt, size: '1024x1024', n: 1 })
+          body: JSON.stringify({
+            model,
+            prompt,
+            size,
+            n: 1,
+            style,
+            quality,
+            output_format: outputFormat,
+            background
+          })
         });
         
         const result = await response.json();
