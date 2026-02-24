@@ -445,11 +445,11 @@ async function handleImageGeneration(request) {
     const prompt = body.prompt || "";
     const model = body.model || "dall-e-3";
     const size = body.size || "1024x1024";
-    const quality = body.quality || "standard";
+    let quality = body.quality || "standard";
     const n = body.n || 1;
     
     // OpenAI 標準參數 / OpenAI Standard Parameters
-    const style = body.style || "natural";  // "vivid" | "natural"
+    let style = body.style || "natural";  // "vivid" | "natural"
     const responseFormat = body.response_format || "url";  // "url" | "b64_json"
     
     // 擴展參數 / Extended Parameters
