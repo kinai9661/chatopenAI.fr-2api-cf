@@ -698,7 +698,9 @@ function handleWebUI() {
     <div class="card">
       <div class="label">API Endpoint</div>
       <input type="text" id="apiUrl" readonly onclick="this.select()">
-      <div class="info">Use with any OpenAI-compatible client. API key can be anything.</div>
+      <div class="label">API Key (optional)</div>
+      <input type="password" id="apiKey" placeholder="Enter API Key if required">
+      <div class="info">Use with any OpenAI-compatible client. Enter API Key if server requires authentication.</div>
     </div>
     
     <div class="card">
@@ -791,12 +793,18 @@ function handleWebUI() {
       const output = document.getElementById('output');
       const prompt = document.getElementById('prompt').value;
       const model = document.getElementById('chat-model').value;
+      const apiKey = document.getElementById('apiKey').value;
       output.textContent = 'Sending to ' + model + '...';
       
       try {
+        const headers = { 'Content-Type': 'application/json' };
+        if (apiKey) {
+          headers['Authorization'] = 'Bearer ' + apiKey;
+        }
+        
         const response = await fetch('/v1/chat/completions', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: headers,
           body: JSON.stringify({ model, messages: [{ role: 'user', content: prompt }], stream: true })
         });
         
@@ -843,14 +851,20 @@ function handleWebUI() {
       const outputFormat = document.getElementById('img-output-format').value;
       const background = document.getElementById('img-background').value;
       const n = parseInt(document.getElementById('img-n').value) || 1;
+      const apiKey = document.getElementById('apiKey').value;
       
       output.textContent = 'Generating ' + n + ' image(s) with ' + model + ' (' + style + ', ' + quality + ')...';
       container.innerHTML = '';
       
       try {
+        const headers = { 'Content-Type': 'application/json' };
+        if (apiKey) {
+          headers['Authorization'] = 'Bearer ' + apiKey;
+        }
+        
         const response = await fetch('/v1/images/generations', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: headers,
           body: JSON.stringify({
             model,
             prompt,
